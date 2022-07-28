@@ -196,9 +196,7 @@ def get_client_config(request=None):
         "organizationUrl": generate_organization_url(last_organization)
         if last_organization
         else None,
-        "regionUrl": generate_region_url()
-        if last_organization
-        else None,
+        "regionUrl": generate_region_url() if last_organization else None,
     }
     if user and user.is_authenticated:
         context.update(
