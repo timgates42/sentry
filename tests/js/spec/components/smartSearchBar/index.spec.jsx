@@ -1,4 +1,5 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
+import {fireEvent, render, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'sentry/api';
 import {SmartSearchBar} from 'sentry/components/smartSearchBar';
@@ -1443,6 +1444,60 @@ describe('SmartSearchBar', function () {
       await tick();
 
       expect(searchBar.text()).not.toContain("isn't supported here");
+    });
+  });
+
+  describe('date fields', () => {
+    const props = {
+      query: '',
+      organization,
+      location,
+      supportedTags,
+    };
+
+    it('can select a suggested relative time value', () => {
+      render(<SmartSearchBar {...props} />);
+
+      userEvent.type(screen.getByRole('textbox'), 'lastSeen:');
+
+      userEvent.click(screen.getByText('Last hour'));
+
+      expect(screen.getByRole('textbox')).toHaveValue('lastSeen:-1h ');
+    });
+
+    it('can select from a date picker', async () => {
+      render(<SmartSearchBar {...props} />);
+
+      userEvent.type(screen.getByRole('textbox'), 'lastSeen:');
+
+      userEvent.click(screen.getByText('After a custom datetime'));
+
+      // Should have added '>' to query and show a date picker
+      expect(screen.getByRole('textbox')).toHaveValue('lastSeen:>');
+      expect(screen.getByTestId('search-bar-date-picker')).toBeInTheDocument();
+
+      // Select a day on the calendar
+      const dateInput = await screen.findByTestId('date-picker');
+      fireEvent.change(dateInput, {target: {value: '2022-01-02'}});
+
+      expect(screen.getByRole('textbox')).toHaveValue(
+        // -05:00 because our tests run in EST
+        'lastSeen:>2022-01-02T00:00:00-05:00'
+      );
+
+      const timeInput = screen.getByLabelText('Time');
+
+      // Time input should start at all zeros to match query
+      expect(timeInput).toHaveValue('00:00:00');
+      fireEvent.change(timeInput, {target: {value: '01:02:03'}});
+
+      expect(screen.getByRole('textbox')).toHaveValue(
+        'lastSeen:>2022-01-02T01:02:03-05:00'
+      );
+
+      // Toggle UTC on, which should remove the timezone (-05:00) from the query
+      userEvent.click(screen.getByLabelText('Use UTC'));
+      expect(screen.getByRole('textbox')).toHaveValue('lastSeen:>2022-01-02T01:02:03');
     });
   });
 });
