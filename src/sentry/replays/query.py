@@ -18,6 +18,7 @@ from snuba_sdk import (
 )
 from snuba_sdk.orderby import Direction, OrderBy
 
+from sentry.api.event_search import SearchConfig, SearchFilter
 from sentry.utils.snuba import raw_snql_query
 
 MAX_PAGE_SIZE = 100
@@ -25,6 +26,26 @@ DEFAULT_PAGE_SIZE = 10
 DEFAULT_OFFSET = 0
 
 Paginators = namedtuple("Paginators", ("limit", "offset"))
+
+replay_config = SearchConfig(
+    duration_keys={"duration"},
+    numeric_keys={"project_id"},
+    date_keys={"started_at", "finished_at"},
+    allowed_keys={
+        "title",
+        "platform",
+        "release",
+        "dist",
+        "user.id",
+        "user.email",
+        "user.name",
+        "user.ip_address",
+        "sdk_name",
+        "sdk_version",
+        "duration",
+        "count_segments",
+    },
+)
 
 
 def query_replays_collection(
@@ -35,6 +56,7 @@ def query_replays_collection(
     sort: Optional[str],
     limit: Optional[str],
     offset: Optional[str],
+    search_filters: List[SearchFilter],
 ) -> dict:
     """Query aggregated replay collection."""
     conditions = []
@@ -51,6 +73,7 @@ def query_replays_collection(
         where=[],
         sorting=sort_ordering,
         pagination=paginators,
+        search_filters=search_filters,
     )
     return response["data"]
 
@@ -82,6 +105,7 @@ def query_replays_dataset(
     where: List[Condition],
     sorting: List[OrderBy],
     pagination: Optional[Paginators],
+    search_filters: List[SearchFilter],
 ):
     query_options = {}
 
@@ -107,6 +131,8 @@ def query_replays_dataset(
                 Condition(Function("min", parameters=[Column("sequence_id")]), Op.EQ, 0),
                 # Discard short replays (5 seconds by arbitrary decision).
                 Condition(Column("duration"), Op.GTE, 5),
+                # User conditions.
+                *search_filters_to_snuba_filters(search_filters),
             ],
             orderby=sorting,
             groupby=[Column("replay_id")],
@@ -214,6 +240,30 @@ def _grouped_unique_scalar_value(
         parameters=[_grouped_unique_values(column_name), 1],
         alias=alias or column_name if aliased else None,
     )
+
+
+# Filter.
+
+
+OPERATOR_MAP = {
+    "=": Op.EQ,
+    "!=": Op.NEQ,
+    ">": Op.GT,
+    ">=": Op.GTE,
+    "<": Op.LT,
+    "<=": Op.LTE,
+}
+
+
+def search_filters_to_snuba_filters(search_filters: List[SearchFilter]) -> List[Condition]:
+    for search_filter in search_filters:
+        operator_string = search_filter.operator
+        operator = OPERATOR_MAP.get(operator_string, "=")
+
+        column_name = search_filter.key.name
+        column_name = column_name.replace(".", "_")  # Translate nested fields to flat.
+
+        yield Condition(Column(column_name), operator, search_filter.value.value)
 
 
 # Sort.
