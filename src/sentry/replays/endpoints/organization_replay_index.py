@@ -25,7 +25,7 @@ class OrganizationReplayIndexEndpoint(OrganizationEndpoint):
             if key not in filter_params:
                 filter_params[key] = value
 
-        search_filters = parse_search_query(request.query_params["query"], replay_config)
+        search_filters = parse_search_query(request.query_params.get("query", ""), replay_config)
         search_filters = [term for term in search_filters if isinstance(term, SearchFilter)]
 
         snuba_response = query_replays_collection(
