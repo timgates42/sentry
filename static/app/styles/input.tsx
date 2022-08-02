@@ -2,7 +2,7 @@ import {css} from '@emotion/react';
 
 import {Theme} from 'sentry/utils/theme';
 
-export const INPUT_PADDING = 10;
+export const INPUT_PADDING = 16;
 
 type Props = {
   theme: Theme;

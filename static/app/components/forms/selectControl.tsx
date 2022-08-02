@@ -279,6 +279,7 @@ function SelectControl<OptionType extends GeneralSelectValue = GeneralSelectValu
       valueContainer: (provided: React.CSSProperties) => ({
         ...provided,
         alignItems: 'center',
+        paddingLeft: 16,
         ...(isCompact && {
           fontSize: theme.fontSizeMedium,
           padding: `${space(0.5)} ${space(1)}`,

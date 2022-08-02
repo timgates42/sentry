@@ -27,37 +27,22 @@ export const Default = ({...fieldProps}) => {
         placeholder="Type text and then delete it"
         {...fieldProps}
       />
-      <NewBooleanField name="field" label="New Boolean Field" {...fieldProps} />
-      <RadioField
-        name="radio"
-        label="Radio Field"
-        choices={[
-          ['choice_one', 'Choice One'],
-          ['choice_two', 'Choice Two'],
-          ['choice_three', 'Choice Three'],
-        ]}
+      <TextField
+        name="textfieldflexiblecontrol"
+        label="Disabled Text Field"
+        placeholder="Type text and then delete it"
         {...fieldProps}
+        disabled
       />
       <SelectField
         name="select"
         label="Select Field"
+        defaultValue="choice_one"
         choices={[
           ['choice_one', 'Choice One'],
           ['choice_two', 'Choice Two'],
           ['choice_three', 'Choice Three'],
         ]}
-        {...fieldProps}
-      />
-      <RangeField
-        name="rangeField"
-        label="Range Field"
-        min={1}
-        max={10}
-        step={1}
-        value={1}
-        formatLabel={value => {
-          return `${value} Toaster Strudle${value > 1 ? 's' : ''}`;
-        }}
         {...fieldProps}
       />
     </Form>
