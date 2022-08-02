@@ -1,13 +1,14 @@
 from typing import Sequence
 
 from sentry.models import Activity, Group, GroupStatus
+from sentry.tasks.base import instrumented_task
 from sentry.utils.suspect_resolutions import analytics
 from sentry.utils.suspect_resolutions.commit_correlation import is_issue_commit_correlated
 from sentry.utils.suspect_resolutions.metric_correlation import is_issue_error_rate_correlated
 
 
+@instrumented_task(name="sentry.tasks.get_suspect_resolutions", queue="get_suspect_resolutions")
 def get_suspect_resolutions(resolved_issue: Group) -> Sequence[Group]:
-
     resolution_type = Activity.objects.filter(group=resolved_issue).values_list("type").first()
 
     if resolved_issue.status != GroupStatus.RESOLVED or resolution_type is None:
