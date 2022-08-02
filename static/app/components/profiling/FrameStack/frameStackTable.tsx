@@ -116,6 +116,10 @@ export function FrameStackTable({
     }
 
     canvasPoolManager.dispatch('zoom at frame', [clickedContextMenuNode.node, 'exact']);
+    canvasPoolManager.dispatch('highlight frame', [
+      clickedContextMenuNode.node,
+      'selected',
+    ]);
   }, [canvasPoolManager, clickedContextMenuNode]);
 
   const renderRow: UseVirtualizedListProps<FlamegraphFrame>['renderRow'] = useCallback(
@@ -288,6 +292,7 @@ const FrameBar = styled('div')`
   background-color: ${p => p.theme.surface100};
   border-top: 1px solid ${p => p.theme.border};
   flex: 1 1 100%;
+  grid-area: table;
 `;
 
 const FrameCallersTable = styled('div')`

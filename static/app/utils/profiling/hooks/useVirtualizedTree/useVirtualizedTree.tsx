@@ -307,24 +307,22 @@ export function useVirtualizedTree<T extends TreeLike>(
     }
   }, []);
 
-  const expandedHistory = useRef<Set<T>>(new Set());
+  const flattenedHistory = useRef<ReadonlyArray<VirtualizedTreeNode<T>>>(tree.flattened);
+  const expandedHistory = useRef<Set<T>>(tree.getAllExpandedNodes(new Set()));
   useEffectAfterFirstRender(() => {
-    const expandedNodes = tree.getAllExpandedNodes(expandedHistory.current);
     const newTree = VirtualizedTree.fromRoots(
       props.tree,
       props.skipFunction,
-      expandedNodes
+      expandedHistory.current
     );
-
-    expandedHistory.current = expandedNodes;
 
     if (props.sortFunction) {
       newTree.sort(props.sortFunction);
     }
 
     const tabIndex = findCarryOverIndex(
-      latestStateRef.current.tabIndexKey
-        ? tree.flattened[latestStateRef.current.tabIndexKey]
+      typeof latestStateRef.current.tabIndexKey === 'number'
+        ? flattenedHistory.current[latestStateRef.current.tabIndexKey]
         : null,
       newTree
     );
@@ -346,7 +344,16 @@ export function useVirtualizedTree<T extends TreeLike>(
 
     dispatch({type: 'set tab index key', payload: tabIndex});
     setTree(newTree);
-  }, [props.tree, props.skipFunction, cleanupAllHoveredRows]);
+
+    expandedHistory.current = newTree.getAllExpandedNodes(expandedHistory.current);
+    flattenedHistory.current = newTree.flattened;
+  }, [
+    props.tree,
+    props.skipFunction,
+    props.sortFunction,
+    props.rowHeight,
+    cleanupAllHoveredRows,
+  ]);
 
   const items = useMemo(() => {
     return findVisibleItems<T>({
@@ -364,6 +371,8 @@ export function useVirtualizedTree<T extends TreeLike>(
   // On scroll, we update scrollTop position.
   // Keep a rafId reference in the unlikely event where component unmounts before raf is executed.
   const scrollEndTimeoutId = useRef<AnimationTimeoutId | undefined>(undefined);
+  const previousScrollHeight = useRef<number>(0);
+
   useEffect(() => {
     const scrollContainer = props.scrollContainer;
 
@@ -371,7 +380,13 @@ export function useVirtualizedTree<T extends TreeLike>(
       return undefined;
     }
 
-    const handleScroll = evt => {
+    function handleScroll(evt) {
+      const top = Math.max(evt.target.scrollTop, 0);
+
+      if (previousScrollHeight.current === top) {
+        return;
+      }
+
       evt.target.firstChild.style.pointerEvents = 'none';
 
       if (scrollEndTimeoutId.current !== undefined) {
@@ -384,7 +399,7 @@ export function useVirtualizedTree<T extends TreeLike>(
 
       dispatch({
         type: 'set scroll top',
-        payload: Math.max(evt.target.scrollTop, 0),
+        payload: top,
       });
 
       // On scroll, we need to update the selected ghost row and clear the hovered ghost row
@@ -402,7 +417,9 @@ export function useVirtualizedTree<T extends TreeLike>(
       hideGhostRow({
         ref: hoveredGhostRowRef,
       });
-    };
+
+      previousScrollHeight.current = top;
+    }
 
     scrollContainer.addEventListener('scroll', handleScroll, {
       passive: true,

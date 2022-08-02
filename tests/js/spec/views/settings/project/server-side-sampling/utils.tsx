@@ -5,6 +5,7 @@ import {initializeOrg} from 'sentry-test/initializeOrg';
 import GlobalModal from 'sentry/components/globalModal';
 import {Organization, Project} from 'sentry/types';
 import {
+  RecommendedSdkUpgrade,
   SamplingConditionOperator,
   SamplingDistribution,
   SamplingInnerOperator,
@@ -13,10 +14,18 @@ import {
   SamplingSdkVersion,
 } from 'sentry/types/sampling';
 import {OrganizationContext} from 'sentry/views/organizationContext';
+import {Outcome} from 'sentry/views/organizationStats/types';
 import {RouteContext} from 'sentry/views/routeContext';
 import ServerSideSampling from 'sentry/views/settings/project/server-side-sampling';
 import importedUseProjectStats from 'sentry/views/settings/project/server-side-sampling/utils/useProjectStats';
 import {useRecommendedSdkUpgrades as importedUseRecommendedSdkUpgrades} from 'sentry/views/settings/project/server-side-sampling/utils/useRecommendedSdkUpgrades';
+
+export const outcomesWithoutClientDiscarded = {
+  ...TestStubs.Outcomes(),
+  groups: TestStubs.Outcomes().groups.filter(
+    group => group.by.outcome !== Outcome.CLIENT_DISCARD
+  ),
+};
 
 export const uniformRule: SamplingRule = {
   sampleRate: 0.5,
@@ -92,6 +101,14 @@ export const mockedSamplingSdkVersions: SamplingSdkVersion[] = [
   },
 ];
 
+export const recommendedSdkUpgrades: RecommendedSdkUpgrade[] = [
+  {
+    project: mockedProjects[1],
+    latestSDKName: mockedSamplingSdkVersions[1].latestSDKName,
+    latestSDKVersion: mockedSamplingSdkVersions[1].latestSDKVersion,
+  },
+];
+
 export const mockedSamplingDistribution: SamplingDistribution = {
   project_breakdown: [
     {
@@ -144,6 +161,7 @@ useRecommendedSdkUpgrades.mockImplementation(() => ({
       latestSDKVersion: mockedSamplingSdkVersions[1].latestSDKVersion,
     },
   ],
+  fetching: false,
 }));
 
 export function getMockData({

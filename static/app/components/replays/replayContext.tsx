@@ -11,8 +11,6 @@ import useRAF from 'sentry/utils/replays/hooks/useRAF';
 import type ReplayReader from 'sentry/utils/replays/replayReader';
 import usePrevious from 'sentry/utils/usePrevious';
 
-import HighlightReplayPlugin from './highlightReplayPlugin';
-
 type Dimensions = {height: number; width: number};
 type RootElem = null | HTMLDivElement;
 
@@ -47,11 +45,6 @@ type ReplayPlayerContextProps = {
    * Original dimensions in pixels of the captured browser window
    */
   dimensions: Dimensions;
-
-  /**
-   * Duration of the video, in miliseconds
-   */
-  duration: undefined | number;
 
   /**
    * The calculated speed of the player when fast-forwarding through idle moments in the video
@@ -149,14 +142,13 @@ const ReplayPlayerContext = React.createContext<ReplayPlayerContextProps>({
   currentHoverTime: undefined,
   currentTime: 0,
   dimensions: {height: 0, width: 0},
-  duration: undefined,
   fastForwardSpeed: 0,
   highlight: () => {},
   initRoot: () => {},
   isBuffering: false,
   isFinished: false,
   isPlaying: false,
-  isSkippingInactive: false,
+  isSkippingInactive: true,
   removeHighlight: () => {},
   replay: null,
   restart: () => {},
@@ -201,7 +193,7 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
   const [currentHoverTime, setCurrentHoverTime] = useState<undefined | number>();
   const [isPlaying, setIsPlaying] = useState(false);
   const [finishedAtMS, setFinishedAtMS] = useState<number>(-1);
-  const [isSkippingInactive, setIsSkippingInactive] = useState(false);
+  const [isSkippingInactive, setIsSkippingInactive] = useState(true);
   const [speed, setSpeedState] = useState(1);
   const [fastForwardSpeed, setFFSpeed] = useState(0);
   const [buffer, setBufferTime] = useState({target: -1, previous: -1});
@@ -280,8 +272,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
         }
       }
 
-      const highlightReplayPlugin = new HighlightReplayPlugin();
-
       // eslint-disable-next-line no-new
       const inst = new Replayer(events, {
         root,
@@ -295,7 +285,8 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
           strokeStyle: theme.purple200,
         },
         // unpackFn: _ => _,
-        plugins: [highlightReplayPlugin],
+        // plugins: [],
+        skipInactive: true,
       });
 
       // @ts-expect-error: rrweb types event handlers with `unknown` parameters
@@ -448,9 +439,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
     setBufferTime({target: -1, previous: -1});
   }
 
-  const event = replay?.getEvent();
-  const duration = event ? (event.endTimestamp - event.startTimestamp) * 1000 : undefined;
-
   return (
     <ReplayPlayerContext.Provider
       value={{
@@ -458,7 +446,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
         currentHoverTime,
         currentTime,
         dimensions,
-        duration,
         fastForwardSpeed,
         highlight,
         initRoot,

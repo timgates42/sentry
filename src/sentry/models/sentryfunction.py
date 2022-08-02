@@ -1,6 +1,7 @@
 from django.db import models
 
 from sentry.db.models import BaseManager, DefaultFieldsModel, FlexibleForeignKey
+from sentry.db.models.fields.array import ArrayField
 
 
 class SentryFunction(DefaultFieldsModel):
@@ -11,7 +12,9 @@ class SentryFunction(DefaultFieldsModel):
     slug = models.CharField(max_length=64, unique=True)
     author = models.TextField()
     external_id = models.CharField(max_length=128, unique=True)
-
+    overview = models.TextField(null=True)
+    code = models.TextField(null=True)
+    events = ArrayField(of=models.TextField, null=True)
     objects = BaseManager()
 
     class Meta:

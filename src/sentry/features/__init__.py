@@ -57,15 +57,16 @@ default_manager.add("auth:register")
 default_manager.add("organizations:create")
 
 # Organization scoped features that are in development or in customer trials.
+default_manager.add("organizations:active-release-monitor-alpha", OrganizationFeature, True)
 default_manager.add("organizations:active-release-notification-opt-in", OrganizationFeature, True)
 default_manager.add("organizations:alert-filters", OrganizationFeature)
 default_manager.add("organizations:alert-crash-free-metrics", OrganizationFeature, True)
-default_manager.add("organizations:alert-release-notification-workflow", OrganizationFeature, True)
 default_manager.add("organizations:alert-wizard-v3", OrganizationFeature, True)
 default_manager.add("organizations:api-keys", OrganizationFeature)
 default_manager.add("organizations:breadcrumb-linked-event", OrganizationFeature, True)
 default_manager.add("organizations:crash-rate-alerts", OrganizationFeature, True)
 default_manager.add("organizations:custom-event-title", OrganizationFeature)
+default_manager.add("organizations:customer-domains", OrganizationFeature, True)
 default_manager.add("organizations:dashboard-grid-layout", OrganizationFeature, True)
 default_manager.add("organizations:dashboards-mep", OrganizationFeature, True)
 default_manager.add("organizations:dashboards-releases", OrganizationFeature, True)
@@ -86,7 +87,6 @@ default_manager.add("organizations:grouping-stacktrace-ui", OrganizationFeature,
 default_manager.add("organizations:grouping-title-ui", OrganizationFeature, True)
 default_manager.add("organizations:grouping-tree-ui", OrganizationFeature, True)
 default_manager.add("organizations:higher-ownership-limit", OrganizationFeature)
-default_manager.add("organizations:images-loaded-v2", OrganizationFeature)
 default_manager.add("organizations:invite-members", OrganizationFeature)
 default_manager.add("organizations:invite-members-rate-limits", OrganizationFeature)
 default_manager.add("organizations:issue-id-breadcrumbs", OrganizationFeature, True)
@@ -95,6 +95,7 @@ default_manager.add("organizations:issue-list-trend-sort", OrganizationFeature, 
 default_manager.add("organizations:issue-search-use-cdc-primary", OrganizationFeature, True)
 default_manager.add("organizations:issue-search-use-cdc-secondary", OrganizationFeature, True)
 default_manager.add("organizations:large-debug-files", OrganizationFeature)
+default_manager.add("organizations:mep-rollout-flag", OrganizationFeature, True)
 default_manager.add("organizations:metric-alert-threshold-period", OrganizationFeature, True)
 default_manager.add("organizations:metrics", OrganizationFeature, True)
 default_manager.add("organizations:metric-alert-chartcuterie", OrganizationFeature, True)
@@ -104,6 +105,7 @@ default_manager.add(
     "organizations:new-widget-builder-experience-modal-access", OrganizationFeature, True
 )
 default_manager.add("organizations:metrics-extraction", OrganizationFeature)
+default_manager.add("organizations:metrics-performance-alerts", OrganizationFeature, True)
 default_manager.add("organizations:metrics-performance-ui", OrganizationFeature, True)
 default_manager.add("organizations:minute-resolution-sessions", OrganizationFeature)
 default_manager.add("organizations:mobile-screenshots", OrganizationFeature, True)
@@ -142,7 +144,7 @@ default_manager.add("organizations:session-replay", OrganizationFeature, True)
 default_manager.add("organizations:set-grouping-config", OrganizationFeature)
 default_manager.add("organizations:slack-overage-notifications", OrganizationFeature, True)
 default_manager.add("organizations:symbol-sources", OrganizationFeature)
-default_manager.add("organizations:server-side-sampling", OrganizationFeature, True)
+default_manager.add("organizations:server-side-sampling", OrganizationFeature)
 default_manager.add("organizations:team-roles", OrganizationFeature, True)
 default_manager.add("organizations:transaction-metrics-extraction", OrganizationFeature, True)
 default_manager.add("organizations:unified-span-view", OrganizationFeature, True)
@@ -190,6 +192,7 @@ default_manager.add("organizations:sso-saml2", OrganizationFeature)
 default_manager.add("organizations:team-insights", OrganizationFeature)
 
 # Project scoped features
+default_manager.add("projects:active-release-monitor-default-on", ProjectFeature, True)
 default_manager.add("projects:alert-filters", ProjectFeature)
 default_manager.add("projects:custom-inbound-filters", ProjectFeature)
 default_manager.add("projects:data-forwarding", ProjectFeature)
@@ -207,6 +210,9 @@ default_manager.add("projects:similarity-view-v2", ProjectFeature)
 # Project plugin features
 default_manager.add("projects:plugins", ProjectPluginFeature)
 default_manager.add("users:notification-slack-automatic", UserFeature)
+
+# Workflow 2.0 Project features
+default_manager.add("projects:auto-associate-commits-to-release", ProjectFeature)
 
 
 # This is a gross hardcoded list, but there's no
