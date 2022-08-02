@@ -752,8 +752,8 @@ const commonTheme = {
     md: {
       paddingTop: 10,
       paddingBottom: 10,
-      paddingLeft: 16,
-      paddingRight: 16,
+      paddingLeft: 12,
+      paddingRight: 12,
     },
     sm: {
       paddingTop: 8,
