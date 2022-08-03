@@ -153,7 +153,7 @@ class OrganizationDashboardDetailsGetTest(OrganizationDashboardDetailsTestCase):
         assert "period" not in response.data
 
     def test_dashboard_filters_are_returned_in_response(self):
-        filters = {"environment": ["alpha"], "period": "24hr", "releases": ["test-release"]}
+        filters = {"environment": ["alpha"], "period": "24hr", "release": ["test-release"]}
         dashboard = Dashboard.objects.create(
             title="Dashboard With Filters",
             created_by=self.user,
@@ -166,12 +166,12 @@ class OrganizationDashboardDetailsGetTest(OrganizationDashboardDetailsTestCase):
         assert response.data["projects"] == list(dashboard.projects.values_list("id", flat=True))
         assert response.data["environment"] == filters["environment"]
         assert response.data["period"] == filters["period"]
-        assert response.data["filters"]["releases"] == filters["releases"]
+        assert response.data["filters"]["release"] == filters["release"]
 
     def test_start_and_end_filters_are_returned_in_response(self):
         start = iso_format(datetime.now() - timedelta(seconds=10))
         end = iso_format(datetime.now())
-        filters = {"start": start, "end": end}
+        filters = {"start": start, "end": end, "utc": False}
         dashboard = Dashboard.objects.create(
             title="Dashboard With Filters",
             created_by=self.user,
@@ -183,6 +183,7 @@ class OrganizationDashboardDetailsGetTest(OrganizationDashboardDetailsTestCase):
         response = self.do_request("get", self.url(dashboard.id))
         assert iso_format(response.data["start"]) == start
         assert iso_format(response.data["end"]) == end
+        assert not response.data["utc"]
 
     def test_response_truncates_with_retention(self):
         start = iso_format(datetime.now() - timedelta(days=3))
@@ -1358,7 +1359,7 @@ class OrganizationDashboardDetailsPutTest(OrganizationDashboardDetailsTestCase):
             "projects": [project1.id, project2.id],
             "environment": ["alpha"],
             "period": "7d",
-            "filters": {"releases": ["v1"]},
+            "filters": {"release": ["v1"]},
         }
 
         response = self.do_request("put", self.url(self.dashboard.id), data=data)
@@ -1366,7 +1367,7 @@ class OrganizationDashboardDetailsPutTest(OrganizationDashboardDetailsTestCase):
         assert response.data["projects"] == [project1.id, project2.id]
         assert response.data["environment"] == ["alpha"]
         assert response.data["period"] == "7d"
-        assert response.data["filters"]["releases"] == ["v1"]
+        assert response.data["filters"]["release"] == ["v1"]
 
     def test_update_dashboard_with_invalid_project_filter(self):
         other_project = self.create_project(name="other", organization=self.create_organization())
@@ -1377,6 +1378,32 @@ class OrganizationDashboardDetailsPutTest(OrganizationDashboardDetailsTestCase):
 
         response = self.do_request("put", self.url(self.dashboard.id), data=data)
         assert response.status_code == 403, response.data
+
+    def test_update_dashboard_with_all_projects(self):
+        data = {
+            "title": "First dashboard",
+            "projects": [-1],
+        }
+
+        response = self.do_request("put", self.url(self.dashboard.id), data=data)
+        assert response.status_code == 200, response.data
+        assert response.data["projects"] == [-1]
+
+    def test_update_dashboard_with_my_projects_after_setting_all_projects(self):
+        dashboard = Dashboard.objects.create(
+            title="Dashboard With Filters",
+            created_by=self.user,
+            organization=self.organization,
+            filters={"all_projects": True},
+        )
+        data = {
+            "title": "First dashboard",
+            "projects": [],
+        }
+
+        response = self.do_request("put", self.url(dashboard.id), data=data)
+        assert response.status_code == 200, response.data
+        assert response.data["projects"] == []
 
 
 class OrganizationDashboardVisitTest(OrganizationDashboardDetailsTestCase):

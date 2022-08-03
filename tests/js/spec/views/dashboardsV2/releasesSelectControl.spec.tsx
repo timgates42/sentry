@@ -1,11 +1,9 @@
-import selectEvent from 'react-select-event';
-
-import {render, screen, userEvent} from 'sentry-test/reactTestingLibrary';
+import {render, screen, userEvent, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import {ReleasesContext} from 'sentry/utils/releases/releasesProvider';
 import ReleasesSelectControl from 'sentry/views/dashboardsV2/releasesSelectControl';
 
-function renderReleasesSelect() {
+function renderReleasesSelect(onSearch?: (searchTerm: string) => void) {
   render(
     <ReleasesContext.Provider
       value={{
@@ -24,22 +22,22 @@ function renderReleasesSelect() {
           }),
         ],
         loading: false,
+        onSearch: onSearch ?? jest.fn(),
       }}
     >
-      <ReleasesSelectControl />
+      <ReleasesSelectControl selectedReleases={[]} />
     </ReleasesContext.Provider>
   );
 }
 
 describe('Dashboards > ReleasesSelectControl', function () {
-  it('updates menu title with selection', async function () {
+  it('updates menu title with selection', function () {
     renderReleasesSelect();
 
     expect(screen.getByText('All Releases')).toBeInTheDocument();
-    await selectEvent.select(
-      screen.getByText('All Releases'),
-      'sentry-android-shop@1.2.0'
-    );
+
+    userEvent.click(screen.getByText('All Releases'));
+    userEvent.click(screen.getByText('sentry-android-shop@1.2.0'));
 
     userEvent.click(document.body);
 
@@ -60,5 +58,32 @@ describe('Dashboards > ReleasesSelectControl', function () {
 
     expect(screen.getByText('sentry-android-shop@1.2.0')).toBeInTheDocument();
     expect(screen.getByText('+1')).toBeInTheDocument();
+  });
+
+  it('calls onSearch when filtering by releases', async function () {
+    const mockOnSearch = jest.fn();
+    renderReleasesSelect(mockOnSearch);
+
+    expect(screen.getByText('All Releases')).toBeInTheDocument();
+
+    userEvent.click(screen.getByText('All Releases'));
+    userEvent.type(screen.getByText('Search\u2026'), 'se');
+
+    await waitFor(() => expect(mockOnSearch).toBeCalledWith('se'));
+  });
+
+  it('resets search on close', async function () {
+    const mockOnSearch = jest.fn();
+    renderReleasesSelect(mockOnSearch);
+
+    expect(screen.getByText('All Releases')).toBeInTheDocument();
+
+    userEvent.click(screen.getByText('All Releases'));
+    userEvent.type(screen.getByText('Search\u2026'), 'se');
+
+    await waitFor(() => expect(mockOnSearch).toBeCalledWith('se'));
+
+    userEvent.click(document.body);
+    await waitFor(() => expect(mockOnSearch).toBeCalledWith(''));
   });
 });

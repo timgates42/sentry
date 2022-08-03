@@ -11,8 +11,6 @@ import useRAF from 'sentry/utils/replays/hooks/useRAF';
 import type ReplayReader from 'sentry/utils/replays/replayReader';
 import usePrevious from 'sentry/utils/usePrevious';
 
-import HighlightReplayPlugin from './highlightReplayPlugin';
-
 type Dimensions = {height: number; width: number};
 type RootElem = null | HTMLDivElement;
 
@@ -47,11 +45,6 @@ type ReplayPlayerContextProps = {
    * Original dimensions in pixels of the captured browser window
    */
   dimensions: Dimensions;
-
-  /**
-   * Duration of the video, in miliseconds
-   */
-  duration: undefined | number;
 
   /**
    * The calculated speed of the player when fast-forwarding through idle moments in the video
@@ -149,14 +142,13 @@ const ReplayPlayerContext = React.createContext<ReplayPlayerContextProps>({
   currentHoverTime: undefined,
   currentTime: 0,
   dimensions: {height: 0, width: 0},
-  duration: undefined,
   fastForwardSpeed: 0,
   highlight: () => {},
   initRoot: () => {},
   isBuffering: false,
   isFinished: false,
   isPlaying: false,
-  isSkippingInactive: false,
+  isSkippingInactive: true,
   removeHighlight: () => {},
   replay: null,
   restart: () => {},
@@ -201,7 +193,7 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
   const [currentHoverTime, setCurrentHoverTime] = useState<undefined | number>();
   const [isPlaying, setIsPlaying] = useState(false);
   const [finishedAtMS, setFinishedAtMS] = useState<number>(-1);
-  const [isSkippingInactive, setIsSkippingInactive] = useState(false);
+  const [isSkippingInactive, setIsSkippingInactive] = useState(true);
   const [speed, setSpeedState] = useState(1);
   const [fastForwardSpeed, setFFSpeed] = useState(0);
   const [buffer, setBufferTime] = useState({target: -1, previous: -1});
@@ -252,6 +244,13 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
     setIsPlaying(false);
   }, []);
 
+  const getCurrentTime = useCallback(
+    () => (replayerRef.current ? Math.max(replayerRef.current.getCurrentTime(), 0) : 0),
+    []
+  );
+
+  const currentPlayerTime = useCurrentTime(getCurrentTime);
+
   const initRoot = useCallback(
     (root: RootElem) => {
       if (events === undefined) {
@@ -280,8 +279,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
         }
       }
 
-      const highlightReplayPlugin = new HighlightReplayPlugin();
-
       // eslint-disable-next-line no-new
       const inst = new Replayer(events, {
         root,
@@ -295,7 +292,8 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
           strokeStyle: theme.purple200,
         },
         // unpackFn: _ => _,
-        plugins: [highlightReplayPlugin],
+        // plugins: [],
+        skipInactive: true,
       });
 
       // @ts-expect-error: rrweb types event handlers with `unknown` parameters
@@ -314,8 +312,10 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
       if (unMountedRef.current) {
         unMountedRef.current = false;
       }
+
+      replayerRef.current.pause(getCurrentTime());
     },
-    [events, theme.purple200, setReplayFinished, hasNewEvents]
+    [events, theme.purple200, setReplayFinished, hasNewEvents, getCurrentTime]
   );
 
   useEffect(() => {
@@ -334,11 +334,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [initRoot, events]);
-
-  const getCurrentTime = useCallback(
-    () => (replayerRef.current ? Math.max(replayerRef.current.getCurrentTime(), 0) : 0),
-    []
-  );
 
   const setCurrentTime = useCallback(
     (requestedTimeMs: number) => {
@@ -425,6 +420,8 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
   }, []);
 
   // Only on pageload: set the initial playback timestamp
+  // Don't include `setCurrentTime` in the hook deps array because it changes
+  // on each play/pause state change.
   useEffect(() => {
     if (initialTimeOffset && events && replayerRef.current) {
       setCurrentTime(initialTimeOffset * 1000);
@@ -433,9 +430,7 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
     return () => {
       unMountedRef.current = true;
     };
-  }, [events, replayerRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const currentPlayerTime = useCurrentTime(getCurrentTime);
+  }, [initialTimeOffset, events]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [isBuffering, currentTime] =
     buffer.target !== -1 &&
@@ -448,9 +443,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
     setBufferTime({target: -1, previous: -1});
   }
 
-  const event = replay?.getEvent();
-  const duration = event ? (event.endTimestamp - event.startTimestamp) * 1000 : undefined;
-
   return (
     <ReplayPlayerContext.Provider
       value={{
@@ -458,7 +450,6 @@ export function Provider({children, replay, initialTimeOffset = 0, value = {}}: 
         currentHoverTime,
         currentTime,
         dimensions,
-        duration,
         fastForwardSpeed,
         highlight,
         initRoot,

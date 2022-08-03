@@ -1,20 +1,43 @@
-import {Fragment, useState} from 'react';
+import {useEffect, useState} from 'react';
 import styled from '@emotion/styled';
+import debounce from 'lodash/debounce';
 
 import Badge from 'sentry/components/badge';
 import CompactSelect from 'sentry/components/forms/compactSelect';
 import TextOverflow from 'sentry/components/textOverflow';
+import {DEFAULT_DEBOUNCE_DURATION} from 'sentry/constants';
 import {IconReleases} from 'sentry/icons';
 import {t} from 'sentry/locale';
-import {Release} from 'sentry/types';
 import {useReleases} from 'sentry/utils/releases/releasesProvider';
 
-function ReleasesSelectControl() {
-  const {releases, loading} = useReleases();
-  const [selectedReleases, setSelectedReleases] = useState<Release[]>([]);
+import {DashboardFilterKeys, DashboardFilters} from './types';
 
-  const triggerLabel = selectedReleases.length ? (
-    <TextOverflow>{selectedReleases[0]}</TextOverflow>
+type Props = {
+  selectedReleases: string[];
+  className?: string;
+  handleChangeFilter?: (activeFilters: DashboardFilters) => void;
+  isDisabled?: boolean;
+};
+
+function ReleasesSelectControl({
+  handleChangeFilter,
+  selectedReleases,
+  className,
+  isDisabled,
+}: Props) {
+  const {releases, loading, onSearch} = useReleases();
+  const [activeReleases, setActiveReleases] = useState<string[]>(selectedReleases);
+
+  function resetSearch() {
+    onSearch('');
+  }
+
+  useEffect(() => {
+    setActiveReleases(selectedReleases);
+  }, [selectedReleases]);
+
+  const triggerLabel = activeReleases.length ? (
+    <TextOverflow>{activeReleases[0]} </TextOverflow>
   ) : (
     t('All Releases')
   );
@@ -24,8 +47,13 @@ function ReleasesSelectControl() {
       multiple
       isClearable
       isSearchable
+      isDisabled={isDisabled}
       isLoading={loading}
       menuTitle={t('Filter Releases')}
+      className={className}
+      onInputChange={debounce(val => {
+        onSearch(val);
+      }, DEFAULT_DEBOUNCE_DURATION)}
       options={
         releases.length
           ? releases.map(release => {
@@ -36,15 +64,19 @@ function ReleasesSelectControl() {
             })
           : []
       }
-      onChange={opts => setSelectedReleases(opts.map(opt => opt.value))}
-      value={selectedReleases}
+      onChange={opts => setActiveReleases(opts.map(opt => opt.value))}
+      onClose={() => {
+        resetSearch();
+        handleChangeFilter?.({[DashboardFilterKeys.RELEASE]: activeReleases});
+      }}
+      value={activeReleases}
       triggerLabel={
-        <Fragment>
-          {triggerLabel}
-          {selectedReleases.length > 1 && (
-            <StyledBadge text={`+${selectedReleases.length - 1}`} />
+        <ButtonLabelWrapper>
+          {triggerLabel}{' '}
+          {activeReleases.length > 1 && (
+            <StyledBadge text={`+${activeReleases.length - 1}`} />
           )}
-        </Fragment>
+        </ButtonLabelWrapper>
       }
       triggerProps={{icon: <IconReleases />}}
     />
@@ -55,4 +87,12 @@ export default ReleasesSelectControl;
 
 const StyledBadge = styled(Badge)`
   flex-shrink: 0;
+`;
+
+const ButtonLabelWrapper = styled('span')`
+  width: 100%;
+  text-align: left;
+  align-items: center;
+  display: inline-grid;
+  grid-template-columns: 1fr auto;
 `;

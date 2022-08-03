@@ -1,34 +1,82 @@
-import {Fragment} from 'react';
-import {css} from '@emotion/react';
+import {cloneElement, useMemo, useRef} from 'react';
 import styled from '@emotion/styled';
 
 import {FlamegraphPreferences} from 'sentry/utils/profiling/flamegraph/flamegraphStateProvider/flamegraphPreferences';
 import {FlamegraphTheme} from 'sentry/utils/profiling/flamegraph/flamegraphTheme';
 import {useFlamegraphPreferencesValue} from 'sentry/utils/profiling/flamegraph/useFlamegraphPreferences';
 import {useFlamegraphTheme} from 'sentry/utils/profiling/flamegraph/useFlamegraphTheme';
+import {
+  useResizableDrawer,
+  UseResizableDrawerOptions,
+} from 'sentry/utils/profiling/hooks/useResizableDrawer';
 
+// 664px is approximately the width where we start to scroll inside
+// 30px is the min height to where the drawer can still be resized
+const MIN_FRAMESTACK_DIMENSIONS: [number, number] = [664, 30];
 interface ProfilingFlamechartLayoutProps {
-  flamechart: React.ReactNode;
-  frameStack: React.ReactNode;
-  minimap: React.ReactNode;
+  flamechart: React.ReactElement;
+  frameStack: React.ReactElement;
+  minimap: React.ReactElement;
 }
 
 export function ProfilingFlamechartLayout(props: ProfilingFlamechartLayoutProps) {
   const flamegraphTheme = useFlamegraphTheme();
   const {layout} = useFlamegraphPreferencesValue();
+  const frameStackRef = useRef<HTMLDivElement>(null);
+
+  const resizableOptions: UseResizableDrawerOptions = useMemo(() => {
+    const initialDimensions: [number, number] = [
+      // Half the screen minus the ~sidebar width
+      window.innerWidth * 0.5 - 220,
+      (flamegraphTheme.SIZES.FLAMEGRAPH_DEPTH_OFFSET + 2) *
+        flamegraphTheme.SIZES.BAR_HEIGHT,
+    ];
+
+    const onResize = (newDimensions: [number, number]) => {
+      if (!frameStackRef.current) {
+        return;
+      }
+
+      if (layout === 'table left' || layout === 'table right') {
+        frameStackRef.current.style.width = `${newDimensions[0]}px`;
+        frameStackRef.current.style.height = `100%`;
+      } else {
+        frameStackRef.current.style.height = `${newDimensions[1]}px`;
+        frameStackRef.current.style.width = `100%`;
+      }
+    };
+
+    return {
+      initialDimensions,
+      onResize,
+      direction:
+        layout === 'table left'
+          ? 'horizontal-ltr'
+          : layout === 'table right'
+          ? 'horizontal-rtl'
+          : 'vertical',
+      min: MIN_FRAMESTACK_DIMENSIONS,
+    };
+  }, [
+    flamegraphTheme.SIZES.FLAMEGRAPH_DEPTH_OFFSET,
+    flamegraphTheme.SIZES.BAR_HEIGHT,
+    layout,
+  ]);
+
+  const {onMouseDown} = useResizableDrawer(resizableOptions);
 
   return (
-    <Fragment>
-      <ProfilingFlamechartLayoutContainer>
-        <ProfilingFlamechartGrid layout={layout}>
-          <MinimapContainer height={flamegraphTheme.SIZES.MINIMAP_HEIGHT}>
-            {props.minimap}
-          </MinimapContainer>
-          <ZoomViewContainer>{props.flamechart}</ZoomViewContainer>
-          <FrameStackContainer layout={layout}>{props.frameStack}</FrameStackContainer>
-        </ProfilingFlamechartGrid>
-      </ProfilingFlamechartLayoutContainer>
-    </Fragment>
+    <ProfilingFlamechartLayoutContainer>
+      <ProfilingFlamechartGrid layout={layout}>
+        <MinimapContainer height={flamegraphTheme.SIZES.MINIMAP_HEIGHT}>
+          {props.minimap}
+        </MinimapContainer>
+        <ZoomViewContainer>{props.flamechart}</ZoomViewContainer>
+        <FrameStackContainer ref={frameStackRef} layout={layout}>
+          {cloneElement(props.frameStack, {onResize: onMouseDown})}
+        </FrameStackContainer>
+      </ProfilingFlamechartGrid>
+    </ProfilingFlamechartLayoutContainer>
   );
 }
 
@@ -43,32 +91,36 @@ const ProfilingFlamechartGrid = styled('div')<{
   display: grid;
   width: 100%;
   grid-template-rows: ${({layout}) =>
-    layout === 'table_bottom'
+    layout === 'table bottom'
       ? 'auto 1fr'
-      : layout === 'table_right'
+      : layout === 'table right'
       ? '100px auto'
       : '100px auto'};
   grid-template-columns: ${({layout}) =>
-    layout === 'table_bottom' ? '100%' : '50% 50%'};
+    layout === 'table bottom'
+      ? '100%'
+      : layout === 'table left'
+      ? `min-content auto`
+      : `auto min-content`};
 
   /* false positive for grid layout */
   /* stylelint-disable */
   grid-template-areas: ${({layout}) =>
-    layout === 'table_bottom'
+    layout === 'table bottom'
       ? `
-        "minimap"
-        "flamegraph"
-        "frame-stack"
+        'minimap'
+        'flamegraph'
+        'frame-stack'
         `
-      : layout === 'table_right'
+      : layout === 'table right'
       ? `
-        "minimap    frame-stack"
-        "flamegraph frame-stack"
+        'minimap    frame-stack'
+        'flamegraph frame-stack'
       `
-      : layout === 'table_left'
+      : layout === 'table left'
       ? `
-        "frame-stack minimap"
-        "frame-stack flamegraph"
+        'frame-stack minimap'
+        'frame-stack flamegraph'
     `
       : ''};
 `;
@@ -91,23 +143,14 @@ const ZoomViewContainer = styled('div')`
 const FrameStackContainer = styled('div')<{layout: FlamegraphPreferences['layout']}>`
   grid-area: frame-stack;
   position: relative;
+  overflow: auto;
+  min-width: ${MIN_FRAMESTACK_DIMENSIONS[0]}px;
 
-  ${({layout}) => {
-    if (layout === 'table_left' || layout === 'table_right') {
-      // If the table is left/right, the height is no longer managed
-      // and this grid area will fill the screen. We absolutely position
-      // the child so that it cannot overgrow the container.
-      return css`
-        > div {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 100%;
-        }
-      `;
-    }
-
-    return ``;
-  }}
+  > div {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
 `;

@@ -32,8 +32,6 @@ export class Flamegraph {
   formatter: (value: number) => string;
   timelineFormatter: (value: number) => string;
 
-  frameIndex: Record<string, FlamegraphFrame> = {};
-
   static Empty(): Flamegraph {
     return new Flamegraph(Profile.Empty(), 0, {
       inverted: false,
@@ -99,6 +97,7 @@ export class Flamegraph {
     );
 
     this.root.node.addToTotalWeight(weight);
+    this.root.end = this.root.start + weight;
     this.root.frame.addToTotalWeight(weight);
   }
 
