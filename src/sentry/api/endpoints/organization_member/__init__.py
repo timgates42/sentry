@@ -111,8 +111,8 @@ def deprecated_save_team_assignments(organization_member: OrganizationMember, te
             organization=organization_member.organization, status=TeamStatus.VISIBLE, slug__in=teams
         )
     )
-    if len(target_teams) != len(teams):
-        raise InvalidTeam
+    # if len(target_teams) != len(teams):
+    #     raise InvalidTeam
 
     OrganizationMemberTeam.objects.filter(organizationmember=organization_member).delete()
     OrganizationMemberTeam.objects.bulk_create(

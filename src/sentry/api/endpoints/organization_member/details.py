@@ -35,7 +35,12 @@ from sentry.roles import organization_roles, team_roles
 from sentry.utils import metrics
 from sentry.utils.retries import TimedRetryPolicy
 
-from . import InvalidTeam, get_allowed_org_roles, save_team_assignments
+from . import (
+    InvalidTeam,
+    deprecated_save_team_assignments,
+    get_allowed_org_roles,
+    save_team_assignments,
+)
 
 ERR_NO_AUTH = "You cannot remove this member with an unauthenticated API request."
 ERR_INSUFFICIENT_ROLE = "You cannot remove a member who has more access than you."
@@ -207,11 +212,18 @@ class OrganizationMemberDetailsEndpoint(OrganizationMemberEndpoint):
 
         # TODO
         # Set the team-role before org-role
-        if "teams" in result or "teamRoles" in result:
+        if "teamRoles" in result:
             try:
                 lock = locks.get(f"org:member:{member.id}", duration=5, name="org_member_details")
                 with TimedRetryPolicy(10)(lock.acquire):
                     save_team_assignments(request, member, result.get("teamRoles"))
+            except InvalidTeam:
+                return Response({"teams": "Invalid team"}, status=400)
+        elif "teams" in result:
+            try:
+                lock = locks.get(f"org:member:{member.id}", duration=5, name="org_member_details")
+                with TimedRetryPolicy(10)(lock.acquire):
+                    deprecated_save_team_assignments(member, result.get("teams"))
             except InvalidTeam:
                 return Response({"teams": "Invalid team"}, status=400)
 
