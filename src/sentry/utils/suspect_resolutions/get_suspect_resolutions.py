@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from sentry import features
 from sentry.models import Activity, Group, GroupStatus
 from sentry.signals import issue_resolved
 from sentry.tasks.base import instrumented_task
@@ -10,7 +11,8 @@ from sentry.utils.suspect_resolutions.metric_correlation import is_issue_error_r
 
 @issue_resolved.connect(weak=False)
 def record_suspect_resolutions(organization_id, project, group, user, resolution_type, **kwargs):
-    get_suspect_resolutions.delay(group.id)
+    if features.has("organizations:suspect-resolutions", project.organization):
+        get_suspect_resolutions.delay(group.id)
 
 
 @instrumented_task(name="sentry.tasks.get_suspect_resolutions", queue="get_suspect_resolutions")
