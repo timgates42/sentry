@@ -20,7 +20,7 @@ from sentry.signals import member_invited
 from sentry.utils import metrics
 from sentry.utils.retries import TimedRetryPolicy
 
-from . import get_allowed_org_roles, save_team_assignments
+from . import deprecated_save_team_assignments, get_allowed_org_roles
 
 ERR_RATE_LIMITED = "You are being rate limited for too many invitations."
 
@@ -183,7 +183,7 @@ class OrganizationMemberIndexEndpoint(OrganizationEndpoint):
 
         :pparam string organization_slug: the slug of the organization the member will belong to
         :param string email: the email address to invite
-        :param string role: the role of the new member
+        :param string role: the org-role of the new member
         :param array teams: the slugs of the teams the member should belong to.
 
         :auth: required
@@ -243,10 +243,12 @@ class OrganizationMemberIndexEndpoint(OrganizationEndpoint):
                 om.token = om.generate_token()
             om.save()
 
-        if result["teams"]:
+        # Avoid setting team-roles
+        if "teams" in result or "teamRoles" in result:
+            teams = result.get("teams") or result.get("teamRoles", {}).keys()
             lock = locks.get(f"org:member:{om.id}", duration=5, name="org_member")
             with TimedRetryPolicy(10)(lock.acquire):
-                save_team_assignments(om, result["teams"])
+                deprecated_save_team_assignments(om, teams)
 
         if settings.SENTRY_ENABLE_INVITES and result.get("sendInvite"):
             om.send_invite_email()

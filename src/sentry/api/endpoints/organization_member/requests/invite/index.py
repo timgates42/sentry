@@ -14,7 +14,7 @@ from sentry.notifications.notifications.organization_request import InviteReques
 from sentry.notifications.utils.tasks import async_send_notification
 from sentry.utils.retries import TimedRetryPolicy
 
-from ... import save_team_assignments
+from ... import deprecated_save_team_assignments
 from ...index import OrganizationMemberSerializer
 
 
@@ -81,10 +81,11 @@ class OrganizationInviteRequestIndexEndpoint(OrganizationEndpoint):
                 invite_status=InviteStatus.REQUESTED_TO_BE_INVITED.value,
             )
 
-            if result["teams"]:
+            if "teams" in result or "teamRoles" in result:
+                teams = result.get("teams") or result.get("teamRoles")
                 lock = locks.get(f"org:member:{om.id}", duration=5, name="org_member_invite")
                 with TimedRetryPolicy(10)(lock.acquire):
-                    save_team_assignments(om, result["teams"])
+                    deprecated_save_team_assignments(om, teams)
 
             self.create_audit_entry(
                 request=request,

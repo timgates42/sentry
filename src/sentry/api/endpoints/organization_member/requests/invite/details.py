@@ -13,7 +13,7 @@ from sentry.exceptions import UnableToAcceptMemberInvitationException
 from sentry.models import InviteStatus, Organization, OrganizationMember
 from sentry.utils.audit import get_api_key_for_audit_log
 
-from ... import get_allowed_org_roles, save_team_assignments
+from ... import deprecated_save_team_assignments, get_allowed_org_roles
 from ...index import OrganizationMemberSerializer
 
 
@@ -105,7 +105,7 @@ class OrganizationInviteRequestDetailsEndpoint(OrganizationMemberEndpoint):
             member.update(role=result["role"])
 
         if "teams" in result:
-            save_team_assignments(member, result["teams"])
+            deprecated_save_team_assignments(member, result["teams"])
 
         if "approve" in request.data:
             allowed_roles = get_allowed_org_roles(request, organization)
