@@ -216,6 +216,18 @@ class ClientConfigViewTest(TestCase):
             assert data["sentryUrl"] == "http://testserver"
             assert data["organizationUrl"] == "http://us.testserver"
 
+        with self.options({"system.organization-base-hostname": "{slug}.testserver"}):
+            resp = self.client.get(self.path)
+            assert resp.status_code == 200
+            assert resp["Content-Type"] == "application/json"
+
+            data = json.loads(resp.content)
+
+            assert data["isAuthenticated"] is True
+            assert data["lastOrganization"] == self.organization.slug
+            assert data["sentryUrl"] == "http://testserver"
+            assert data["organizationUrl"] == f"http://{self.organization.slug}.testserver"
+
     def test_organization_url_organization_url_template(self):
         self.login_as(self.user)
 
