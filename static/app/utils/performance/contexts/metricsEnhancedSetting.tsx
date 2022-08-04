@@ -2,6 +2,7 @@ import {Dispatch, ReactNode, useCallback, useReducer} from 'react';
 import {browserHistory} from 'react-router';
 import {Location} from 'history';
 
+import {Organization} from 'sentry/types';
 import localStorage from 'sentry/utils/localStorage';
 import {decodeScalar} from 'sentry/utils/queryString';
 import useOrganization from 'sentry/utils/useOrganization';
@@ -66,31 +67,37 @@ export class MEPSetting {
   }
 }
 
+export function canUseMetricsData(organization: Organization) {
+  return (
+    organization.features.includes('performance-use-metrics') ||
+    organization.features.includes('performance-transaction-name-only-search')
+  );
+}
+
 export const MEPSettingProvider = ({
   children,
   location,
   _hasMEPState,
+  forceTransactions,
 }: {
   children: ReactNode;
   _hasMEPState?: MEPState;
+  forceTransactions?: boolean;
   location?: Location;
 }) => {
   const organization = useOrganization();
 
-  const canUseMEP =
-    organization.features.includes('performance-use-metrics') ||
-    organization.features.includes('performance-transaction-name-only-search');
-  const shouldDefaultToMetrics = organization.features.includes(
-    'performance-transaction-name-only-search'
-  );
+  const canUseMEP = canUseMetricsData(organization);
 
   const allowedStates = [MEPState.auto, MEPState.metricsOnly, MEPState.transactionsOnly];
   const _metricSettingFromParam = location
     ? decodeScalar(location.query[METRIC_SETTING_PARAM])
     : MEPState.auto;
-  const defaultMetricsState = shouldDefaultToMetrics
-    ? MEPState.metricsOnly
-    : MEPState.auto;
+  let defaultMetricsState = MEPState.metricsOnly;
+
+  if (forceTransactions) {
+    defaultMetricsState = MEPState.transactionsOnly;
+  }
 
   const metricSettingFromParam =
     allowedStates.find(s => s === _metricSettingFromParam) ?? defaultMetricsState;
